@@ -1,0 +1,12 @@
+# @TransactionAPI_HostAddress = http://localhost:5178
+
+# GET {{TransactionAPI_HostAddress}}/weatherforecast/
+# Accept: application/json
+
+@TransactionAPI_HostAddress = http://localhost:8080
+
+GET {{TransactionAPI_HostAddress}}/api/submittrxmessage
+Accept: application/json
+
+
+###
