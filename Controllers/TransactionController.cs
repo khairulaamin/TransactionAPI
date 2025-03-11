@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using System.Globalization;
 
 [ApiController]
@@ -29,16 +28,14 @@ public class TransactionController : ControllerBase
         string generatedSig = GenerateSignature(request);
         if (generatedSig != request.Sig)
         {
-
-            //return BadRequest(new { result = 0, resultmessage = "Access Denied! EXPECTED: " +generatedSig+"EXPECTED: "+GenerateSignature(request) });    //for debug
-            return BadRequest(new { result = 0, resultmessage = "Access Denied!);
+            return BadRequest(new { result = 0, resultmessage = "Access Denied!" });
         }
 
         decimal discountPercentage = CalculateDiscount(request.TotalAmount);
         decimal totalDiscount = request.TotalAmount * discountPercentage;
         decimal finalAmount = request.TotalAmount - totalDiscount;
 
-        return Ok(new { result = 1, totalamount = request.TotalAmount, totaldiscount = totalDiscount, finalamount = finalAmount});
+        return Ok(new { result = 1, totalamount = request.TotalAmount, totaldiscount = totalDiscount, finalamount = finalAmount });
     }
 
     private List<string> ValidateRequest(TransactionRequest request)
@@ -62,25 +59,19 @@ public class TransactionController : ControllerBase
             errors.Add("Access Denied!");
         }
 
-    
+        // Timestamp Validation (must be within ±5 minutes of server time)
         if (DateTime.TryParse(request.Timestamp, null, DateTimeStyles.RoundtripKind, out DateTime requestTime))
         {
             DateTime serverTime = DateTime.UtcNow;
-
-                //if (Math.Abs((serverTime - requestTime).TotalMinutes) > 50)
-                //    errors.Add($"Expired. Current time: {serverTime}, request time: {requestTime}");  //dor debug
-
-
-                if (Math.Abs((serverTime - requestTime).TotalMinutes) > 5)
-                {
-                    errors.Add($"Expired.");
-                }
+            if (Math.Abs((serverTime - requestTime).TotalMinutes) > 5)
+            {
+                errors.Add("Expired.");
             }
+        }
         else
         {
             errors.Add("Invalid timestamp format.");
         }
-
 
         // Validate Total Amount Matches Items
         if (request.Items != null && request.Items.Any())
@@ -95,28 +86,14 @@ public class TransactionController : ControllerBase
         return errors;
     }
 
-    //private string GenerateSignature(TransactionRequest request)
-    //{
-    //    //string rawString = $"{request.Timestamp}{request.PartnerKey}{request.PartnerRefNo}{request.TotalAmount}{request.PartnerPassword}";
-    //    string rawString = $"{request.Timestamp}{request.PartnerKey}{request.PartnerRefNo}{request.TotalAmount}{request.PartnerPassword}";
-
-    //    using (SHA256 sha256 = SHA256.Create())
-    //    {
-    //        byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(rawString));
-    //        return Convert.ToBase64String(hashBytes);
-    //    }
-    //}
-
-
     private string GenerateSignature(TransactionRequest request)
     {
-        if (!DateTime.TryParse(request.Timestamp, null, System.Globalization.DateTimeStyles.AdjustToUniversal, out DateTime timestamp))
+        if (!DateTime.TryParse(request.Timestamp, null, DateTimeStyles.AdjustToUniversal, out DateTime timestamp))
         {
             return "Invalid Timestamp";
         }
 
         string formattedTimestamp = timestamp.ToUniversalTime().ToString("yyyyMMddHHmmss");
-
         string rawString = $"{formattedTimestamp}{request.PartnerKey}{request.PartnerRefNo}{request.TotalAmount}{request.PartnerPassword}";
 
         Console.WriteLine($"Corrected Raw String: {rawString}"); // for debug
@@ -128,7 +105,6 @@ public class TransactionController : ControllerBase
         }
     }
 
-
     private decimal CalculateDiscount(long totalAmount)
     {
         decimal baseDiscount = 0;
@@ -139,7 +115,7 @@ public class TransactionController : ControllerBase
 
         decimal conditionalDiscount = 0;
         if (IsPrime(totalAmount) && totalAmount > 50000) conditionalDiscount += 0.08m;
-        if (totalAmount > 90000 && (totalAmount /100) % 10 == 5) conditionalDiscount += 0.10m;
+        if (totalAmount > 90000 && (totalAmount / 100) % 10 == 5) conditionalDiscount += 0.10m;
 
         decimal totalDiscount = baseDiscount + conditionalDiscount;
         decimal maxDiscount = 0.20m;
@@ -157,5 +133,4 @@ public class TransactionController : ControllerBase
         }
         return true;
     }
-
 }
